@@ -1,14 +1,9 @@
-name: Google Cloud Run Deploy
-# https://github.com/google-github-actions/setup-gcloud
+name: AWS S3 Deploy
+
 on:
   push:
     branches:
       - main
-
-env:
-  PROJECT_ID: ${{ secrets.GCR_PROJECT }}
-  RUN_REGION: ${{ secrets.GCR_REGION }}
-  SERVICE_NAME: personal-website-ap
 
 jobs:
   build:
@@ -45,8 +40,8 @@ jobs:
           name: build
           path: ./build
 
-  deploy-gcr:
-    name: Deploy to GCR
+  deploy-s3:
+    name: Deploy to AWS S3
     needs: build
     runs-on: ubuntu-latest
 
@@ -60,29 +55,12 @@ jobs:
           name: build
           path: .docker/build
 
-      - name: Setup GCloud Auth
-        id: auth
-        uses: google-github-actions/auth@v0.4.0
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
-          credentials_json: ${{ secrets.GCR_SA_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0.2.1
-
-      # Build and push image to Google Container Registry
-      - name: Build & Push
-        run: |-
-          gcloud builds submit \
-            --quiet \
-            --tag "gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA"
-        working-directory: .docker
-
-      # Deploy image to Cloud Run
-      - name: Deploy GCR
-        run: |-
-          gcloud run deploy "$SERVICE_NAME" \
-            --quiet \
-            --region "$RUN_REGION" \
-            --image "gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA" \
-            --platform "managed" \
-            --allow-unauthenticated
+      - name: Deploy static site to S3 bucket
+        run: aws s3 sync ./public/ s3://${{ secrets.AWS_BUCKET_NAME }} --delete
