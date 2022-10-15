@@ -53,7 +53,7 @@ jobs:
         uses: actions/download-artifact@main
         with:
           name: build
-          path: .docker/build
+          path: ./build
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
